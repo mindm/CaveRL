@@ -1,5 +1,8 @@
 extern crate tcod;
 extern crate rand;
+extern crate pathfinding;
+
+
 
 mod mapgen;
 
