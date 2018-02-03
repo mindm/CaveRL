@@ -8,6 +8,8 @@ mod mapgen;
 
 use tcod::console::*;
 use tcod::colors;
+use mapgen::*;
+use pathfinding::Matrix;
 
 // actual size of the window
 const SCREEN_WIDTH: i32 = 80;
@@ -16,7 +18,7 @@ const SCREEN_HEIGHT: i32 = 50;
 const LIMIT_FPS: i32 = 20;  // 20 frames-per-second maximum
 
 
-fn handle_keys(root: &mut Root, player_x: &mut i32, player_y: &mut i32) -> bool {
+fn handle_keys(root: &mut Root, player_x: &mut i32, player_y: &mut i32, mapp: &mut Mapplus) -> bool {
     use tcod::input::Key;
     use tcod::input::KeyCode::*;
 
@@ -35,10 +37,30 @@ fn handle_keys(root: &mut Root, player_x: &mut i32, player_y: &mut i32) -> bool 
         Key { code: Left, .. } => *player_x -= 1,
         Key { code: Right, .. } => *player_x += 1,
 
+        Key {code: Spacebar, ..} => *mapp = new_map(),
+
         _ => {},
     }
 
     false
+}
+
+fn draw(root: &mut Root, mapp: &Mapplus){
+    for x in 0..SCREEN_WIDTH {
+        for y in 0..SCREEN_HEIGHT {
+            let c = mapp.mat[&(x as usize,y as usize)];
+            let color = mapp.col[&(x as usize, y as usize)];
+            root.put_char(x,y,c,BackgroundFlag::None);
+            root.set_char_foreground(x, y, color);
+        }
+    }
+}
+
+fn new_map() -> Mapplus{
+    mapgen::generate_cave(SCREEN_WIDTH as usize,
+                          SCREEN_HEIGHT as usize,
+                          3,
+                          40)
 }
 
 fn main() {
@@ -46,7 +68,7 @@ fn main() {
         .font("arial10x10.png", FontLayout::Tcod)
         .font_type(FontType::Greyscale)
         .size(SCREEN_WIDTH, SCREEN_HEIGHT)
-        .title("Rust/libtcod tutorial")
+        .title("rogue-rs")
         .init();
 
     tcod::system::set_fps(LIMIT_FPS);
@@ -54,16 +76,22 @@ fn main() {
     let mut player_x = SCREEN_WIDTH / 2;
     let mut player_y = SCREEN_HEIGHT / 2;
 
+    let mut mapp = mapgen::generate_cave(SCREEN_WIDTH as usize,
+                                    SCREEN_HEIGHT as usize,
+                                    3,
+                                    40);
+
     while !root.window_closed() {
         root.set_default_foreground(colors::WHITE);
-        root.put_char(player_x, player_y, '@', BackgroundFlag::None);
+//        root.put_char(player_x, player_y, '@', BackgroundFlag::None);
 
+        draw(&mut root, &mapp);
         root.flush();
 
-        root.put_char(player_x, player_y, ' ', BackgroundFlag::None);
+//        root.put_char(player_x, player_y, ' ', BackgroundFlag::None);
 
         // handle keys and exit game if needed
-        let exit = handle_keys(&mut root, &mut player_x, &mut player_y);
+        let exit = handle_keys(&mut root, &mut player_x, &mut player_y, &mut mapp);
         if exit {
             break
         }
