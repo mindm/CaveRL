@@ -38,8 +38,8 @@ fn flood_fill(start :(usize, usize), m: &Matrix<i32>, color: i32) -> Matrix<i32>
 }
 
 fn fill_map(m: &Matrix<i32>) -> (Matrix<i32>, usize){
-    let height = m.rows;
     let width = m.columns;
+    let height = m.rows;
     let mut m2 = m.clone();
 
     let mut colors = 2..99;
@@ -60,8 +60,8 @@ fn fill_map(m: &Matrix<i32>) -> (Matrix<i32>, usize){
 fn room_sizes<T: Ord + Hash + Eq + Clone>(m: &Matrix<T>, exclude: &Vec<T>) -> Vec<(T, usize)>{
     let mut size = HashMap::new();
 
-    let height = m.rows;
-    let width = m.columns;
+    let width = m.rows;
+    let height = m.columns;
 
     for x in 0..width {
         for y in 0..height {
@@ -96,7 +96,7 @@ fn create_random_binary_matrix(
             }
         }
     }
-    let matrix: Matrix<i32> = Matrix::from_vec(height, width, vector);
+    let matrix: Matrix<i32> = Matrix::from_vec(width, height, vector);
     matrix
 }
 
@@ -121,8 +121,8 @@ fn create_matrix(width: usize, height: usize) -> Vec<Vec<i32>> {
 }
 
 fn fill_edges(m: &mut Matrix<i32>) {
-    let height = m.rows;
-    let width = m.columns;
+    let height = m.columns;
+    let width = m.rows;
     println!("height: {}, width: {}", width, height);
     for y in 0..height {
         for x in 0..width {
@@ -271,8 +271,8 @@ pub fn generate_cave(width: usize,
 }
 
 fn print_matrix<T : Debug>(m: &Matrix<T>){
-    for i in 0..m.columns {
-        for j in 0..m.rows {
+    for i in 0..m.rows {
+        for j in 0..m.columns {
             print!("{:?}", m[&(i,j)]);
         }
         println!();
@@ -305,9 +305,27 @@ mod tests {
 
     #[test]
     fn test_edgefill(){
-        let mut matrix = Matrix::new(30, 12, 0 as i32);
+        let mut matrix = Matrix::new(5,4, 0i32);
+        matrix[&(1,0)] = 5;
+        print_matrix(&matrix);
         fill_edges(&mut matrix);
         print_matrix(&matrix);
+
+    }
+
+    #[test]
+    fn test_matrix(){
+        let mut matrix = Matrix::from_vec(3,5, vec!['1', '2', '3', '4',
+        '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']);
+
+        matrix[&(1,0)] = ' ';
+
+        for i in 0..matrix.columns {
+            for j in 0..matrix.rows{
+                print!("{}", matrix[&(j,i)])
+            }
+            println!();
+        }
 
     }
 
