@@ -5,41 +5,46 @@ use pathfinding::Matrix;
 use tcod::colors;
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::fmt::Debug;
+use grid::NodeMap;
 
 pub struct Mapplus {
     pub mat: Matrix<char>,
     pub col : Matrix<colors::Color>
 }
 
-fn flood_fill(start :(usize, usize), m: &Matrix<i32>, color: i32) -> Matrix<i32>{
+fn flood_fill(start :(i32, i32), m: &Vec<Vec<i32>>, color: i32) -> Vec<Vec<i32>>{
     let (x,y) = start;
 
-    assert_eq!(m[&(x, y)], 0);
+    assert_eq!(m[y as usize][x as usize], 0);
+
+//    let height = m.len();
+//    let width = m[0].len();
 
     let mut m2 = m.clone();
+
+//    m2[y as usize][x as usize] = color;
 
     let mut queue = VecDeque::new();
     queue.push_back((x,y));
 
     while !queue.is_empty(){
         let (x1,y1) = queue.pop_front().unwrap();
-        if m2[&(x1, y1)] != 0{
+        if m2[y1 as usize][x1 as usize] != 0{
             continue
         }
-        m2[&(x1, y1)] = color;
+        m2[y1 as usize][x1 as usize] = color;
 
-        if m2[&(x1, y1-1)] == 0 { queue.push_back((x1, y1-1)) }
-        if m2[&(x1, y1+1)] == 0 { queue.push_back((x1, y1+1)) }
-        if m2[&(x1-1, y1)] == 0 { queue.push_back((x1-1, y1)) }
-        if m2[&(x1+1, y1)] == 0 { queue.push_back((x1+1, y1)) }
+        if m2[(y1-1i32) as usize][x1 as usize] == 0 { queue.push_back((x1, y1-1)) }
+        if m2[(y1+1i32) as usize][x1 as usize] == 0 { queue.push_back((x1, y1+1)) }
+        if m2[y1 as usize][(x1-1i32) as usize] == 0 { queue.push_back((x1-1, y1)) }
+        if m2[y1 as usize][(x1+1i32) as usize] == 0 { queue.push_back((x1+1, y1)) }
     }
     m2
 }
 
-fn fill_map(m: &Matrix<i32>) -> (Matrix<i32>, usize){
-    let width = m.columns;
-    let height = m.rows;
+fn fill_map(m: &Vec<Vec<i32>>) -> (Vec<Vec<i32>>, usize){
+    let height = m.len();
+    let width = m[0].len();
     let mut m2 = m.clone();
 
     let mut colors = 2..99;
@@ -47,8 +52,8 @@ fn fill_map(m: &Matrix<i32>) -> (Matrix<i32>, usize){
 
     for x in 0..width {
         for y in 0..height {
-            if m2[&(x, y)] == 0 {
-                m2 = flood_fill((x, y), &m2, colors.next().unwrap());
+            if m2[y][x] == 0 {
+                m2 = flood_fill((x as i32, y as i32), &m2, colors.next().unwrap());
                 count += 1;
             }
         }
@@ -56,16 +61,15 @@ fn fill_map(m: &Matrix<i32>) -> (Matrix<i32>, usize){
     (m2, count)
 }
 
-
-fn room_sizes<T: Ord + Hash + Eq + Clone>(m: &Matrix<T>, exclude: &Vec<T>) -> Vec<(T, usize)>{
+fn room_sizes<T: Ord + Hash + Eq + Clone>(m: &Vec<Vec<T>>, exclude: &Vec<T>) -> Vec<(T, usize)>{
     let mut size = HashMap::new();
 
-    let width = m.rows;
-    let height = m.columns;
+    let height = m.len();
+    let width = m[0].len();
 
     for x in 0..width {
         for y in 0..height {
-            let tile = m[&(x,y)].clone();
+            let tile = m[y][x].clone();
             if !exclude.contains(&tile) && !size.contains_key(&tile) {
                 size.insert(tile, 1);
             } else if !exclude.contains(&tile) {
@@ -77,27 +81,6 @@ fn room_sizes<T: Ord + Hash + Eq + Clone>(m: &Matrix<T>, exclude: &Vec<T>) -> Ve
     let mut ret = size.into_iter().collect::<Vec<(T, usize)>>();
     ret.sort_by(|a, b| a.1.cmp(&b.1));
     ret
-}
-
-fn create_random_binary_matrix(
-    width: usize,
-    height: usize,
-    fill_percent: usize) -> Matrix<i32>{
-    let mut vector: Vec<i32> = vec![];
-    let mut rng = rand::thread_rng();
-    for _ in 0..width {
-        for _ in 0..height {
-            let randint = rng.gen_range(0, 100);
-
-            if randint < fill_percent {
-                vector.push(1);
-            } else {
-                vector.push(0);
-            }
-        }
-    }
-    let matrix: Matrix<i32> = Matrix::from_vec(width, height, vector);
-    matrix
 }
 
 fn create_vector(size: usize) -> Vec<i32> {
@@ -120,14 +103,29 @@ fn create_matrix(width: usize, height: usize) -> Vec<Vec<i32>> {
     v
 }
 
-fn fill_edges(m: &mut Matrix<i32>) {
-    let height = m.columns;
-    let width = m.rows;
-    println!("height: {}, width: {}", width, height);
+fn binary_nodemap(width: usize, height: usize, probability: usize) -> NodeMap<i32>{
+    let mut v: Vec<i32> = Vec::new();
+    let mut rng = rand::thread_rng();
+
+    for _ in 0..(width * height) {
+        let roll = rng.gen_range(0, 100);
+        if roll < probability {
+            v.push(1);
+        } else {
+            v.push(0);
+        }
+    }
+
+    NodeMap::from_vec(width, height, v)
+}
+
+fn fill_edges(m: &mut Vec<Vec<i32>>) {
+    let height = m.len();
+    let width = m[0].len();
     for y in 0..height {
         for x in 0..width {
             if x == 0 || x == width - 1 || y == 0 || y == height - 1 {
-                m[&(x, y)] = 1;
+                m[y][x] = 1;
             }
         }
     }
@@ -155,33 +153,43 @@ fn vector_to_bin(v: &Vec<i32>, chance: usize) -> Vec<i32> {
     v2
 }
 
-fn automaton(original: &Matrix<i32>) -> Matrix<i32> {
-    let mut m = original.clone();
+#[allow(dead_code)]
+fn matrix_print(v: Vec<Vec<i32>>) {
+    for vec in &v {
+        println!("{:?}", vec)
+    }
+}
+
+fn automaton(original: &Vec<Vec<i32>>) -> Vec<Vec<i32>> {
+    let mut m2: Vec<Vec<i32>> = original.clone();
+
+    let height = (*original).len();
+    let width = (*original)[0].len();
 
     let death_limit = 3;
     let birth_limit = 4;
 
-    for y in 0..original.rows {
-        for x in 0..original.columns {
+    for y in 0..height {
+        for x in 0..width {
             let alive = count_alive_neighbours(original, x as i32, y as i32);
 
-            if original[&(x,y)] == 1 {
+            if (*original)[y][x] == 1 {
                 if alive < death_limit {
-                    m[&(x,y)] = 0;
+                    m2[y][x] = 0;
                 } else {
-                    m[&(x,y)] = 1;
+                    m2[y][x] = 1;
                 }
             } else {
                 if alive > birth_limit {
-                    m[&(x,y)] = 1;
+                    m2[y][x] = 1;
                 } else {
-                    m[&(x,y)] = 0;
+                    m2[y][x] = 0;
                 }
             }
         }
     }
 
-    m
+    m2
 }
 
 fn print_m_as_map(m: &Vec<Vec<i32>>) {
@@ -198,9 +206,9 @@ fn print_m_as_map(m: &Vec<Vec<i32>>) {
     }
 }
 
-fn count_alive_neighbours(m: &Matrix<i32>, x: i32, y: i32) -> i32 {
-    let height = m.rows as i32;
-    let width = m.columns as i32;
+fn count_alive_neighbours(m: &Vec<Vec<i32>>, x: i32, y: i32) -> i32 {
+    let height = (*m).len() as i32;
+    let width = (*m)[0].len() as i32;
 
     let mut alive = 0;
 
@@ -211,7 +219,7 @@ fn count_alive_neighbours(m: &Matrix<i32>, x: i32, y: i32) -> i32 {
             } else if i == x && j == y {
                 continue;
             } else {
-                alive += m[&(i as usize,j as usize)]
+                alive += m[j as usize][i as usize]
             }
         }
     }
@@ -222,7 +230,8 @@ pub fn generate_cave(width: usize,
                  height: usize,
                  generations: usize,
                  fill_percentage: usize ) -> Mapplus {
-    let mut m = create_random_binary_matrix(width,height, fill_percentage);
+    let mut m = create_matrix(width,height);
+    m = matrix_to_bin(&m, fill_percentage);
     fill_edges(&mut m);
 
     for _ in 0..generations {
@@ -230,7 +239,7 @@ pub fn generate_cave(width: usize,
     }
 
     let _rooms: usize;
-    let res =  fill_map(&m);
+    let res = fill_map(&m);
     m = res.0;
     _rooms = res.1;
 
@@ -240,18 +249,18 @@ pub fn generate_cave(width: usize,
     let mut mat : Matrix<char> = Matrix::new(width, height, '.');
     let mut colormat: Matrix<colors::Color> = Matrix::new(width, height, colors::WHITE);
 
-    let colvec = vec![colors::LIGHT_BLUE, colors::RED, colors::GREEN, colors::CYAN,
+    let mut colvec = vec![colors::LIGHT_BLUE, colors::RED, colors::GREEN, colors::CYAN,
                       colors::FUCHSIA, colors::AMBER, colors::HAN, colors::PURPLE];
 
     for y in 0..height {
         for x in 0..width {
-            mat[&(x,y)] = match m[&(x,y)] {
+            mat[&(x,y)] = match m[y][x] {
                 1 => '#',
                 _ => '.'
             };
-            colormat[&(x,y)] = match m[&(x,y)] {
+            colormat[&(x,y)] = match m[y][x] {
                 1 => colors::WHITE,
-                z => colvec[(z as usize) % colvec.len()]
+                z => colvec[((z+5) % 8) as usize]
             }
         }
     }
@@ -270,15 +279,6 @@ pub fn generate_cave(width: usize,
     mp
 }
 
-fn print_matrix<T : Debug>(m: &Matrix<T>){
-    for i in 0..m.rows {
-        for j in 0..m.columns {
-            print!("{:?}", m[&(i,j)]);
-        }
-        println!();
-    }
-}
-
 
 #[cfg(test)]
 mod tests {
@@ -293,54 +293,70 @@ mod tests {
     }
 
     #[test]
-    fn test_bin_matrix() {
-        let matrix = create_random_binary_matrix(10,10, 0);
-        for i in 0..matrix.columns {
-            for j in 0..matrix.rows {
-                print!("{}", matrix[&(i, j)]);
-            }
-            println!();
-        }
+    fn test_auto() {
+            let m = create_matrix(60, 35);
+            let mut m2 = matrix_to_bin(&m, 40);
+            fill_edges(&mut m2);
+
+            print_m_as_map(&m2);
+
+            let m3 = automaton(&m2);
+
+            print_m_as_map(&m3);
+
+            let m4 = automaton(&m3);
+
+            print_m_as_map(&m4);
+
+            let mut m5 = automaton(&m4);
+            m5 = automaton(&m5);
+            m5 = automaton(&m5);
+            m5 = automaton(&m5);
+
+            print_m_as_map(&m5);
     }
-
-    #[test]
-    fn test_edgefill(){
-        let mut matrix = Matrix::new(5,4, 0i32);
-        matrix[&(1,0)] = 5;
-        print_matrix(&matrix);
-        fill_edges(&mut matrix);
-        print_matrix(&matrix);
-
-    }
-
-    #[test]
-    fn test_matrix(){
-        let mut matrix = Matrix::from_vec(3,5, vec!['1', '2', '3', '4',
-        '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']);
-
-        matrix[&(1,0)] = ' ';
-
-        for i in 0..matrix.columns {
-            for j in 0..matrix.rows{
-                print!("{}", matrix[&(j,i)])
-            }
-            println!();
-        }
-
-    }
-
-
 
     #[test]
     fn test_count_alive() {
-        let m = Matrix::from_vec(3,3,vec![1,0,1,1,0,1,1,0,1]);
+        let m = vec![vec![1, 0, 1], vec![1, 0, 1], vec![1, 0, 1]];
 
         assert_eq!(count_alive_neighbours(&m, 0, 0), 6);
     }
 
 
+    #[test]
+    fn test_flood_fill() {
+        let mut m = vec![vec![0;100]; 100];
 
+//        assert_eq!(count_alive_neighbours(&m, 0, 0), 6);
 
+        fill_edges(&mut m);
+
+        let instant = Instant::now();
+        let m2 = flood_fill((5,5), &m, 11);
+        let elapsed = instant.elapsed();
+
+        print_m_as_map(&m2);
+        println!("{:?}", elapsed);
+    }
+
+    #[test]
+    fn test_fill_dungeon(){
+        let m = create_matrix(60, 35);
+        let mut m2 = matrix_to_bin(&m, 40);
+        fill_edges(&mut m2);
+
+        let mut m3 = automaton(&m2);
+        m3 = automaton(&m3);
+        m3 = automaton(&m3);
+
+        let rooms: usize;
+        let res =  fill_map(&m3);
+        m3 = res.0;
+        rooms = res.1;
+
+        print_m_as_map(&m3);
+    }
 
     #[derive(Clone, Debug)]
     pub struct Map {
@@ -441,5 +457,10 @@ mod tests {
         }
 
 //        assert_eq!(result.expect("no path found").1,16);
+    }
+    #[test]
+    fn test_binary_nodemap(){
+        let nm = binary_nodemap(20, 20, 40);
+        nm.print();
     }
 }

@@ -5,6 +5,7 @@ extern crate pathfinding;
 
 
 mod mapgen;
+mod grid;
 
 use tcod::console::*;
 use tcod::colors;
