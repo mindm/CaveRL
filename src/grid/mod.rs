@@ -42,6 +42,7 @@ impl<C: Clone> NodeMap<C> {
     }
 }
 
+#[allow(dead_code)]
 impl<C: Debug + Clone> NodeMap<C> {
     pub fn print(&self) {
         for j in 0..self.height {

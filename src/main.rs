@@ -10,7 +10,6 @@ mod grid;
 use tcod::console::*;
 use tcod::colors;
 use mapgen::*;
-use pathfinding::Matrix;
 
 // actual size of the window
 const SCREEN_WIDTH: i32 = 80;
@@ -49,8 +48,8 @@ fn handle_keys(root: &mut Root, player_x: &mut i32, player_y: &mut i32, mapp: &m
 fn draw(root: &mut Root, mapp: &Mapplus){
     for x in 0..SCREEN_WIDTH {
         for y in 0..SCREEN_HEIGHT {
-            let c = mapp.mat[&(x as usize,y as usize)];
-            let color = mapp.col[&(x as usize, y as usize)];
+            let c = mapp.mat.get(&(x as usize, y as usize));
+            let color = mapp.col.get(&(x as usize, y as usize));
             root.put_char(x,y,c,BackgroundFlag::None);
             root.set_char_foreground(x, y, color);
         }
