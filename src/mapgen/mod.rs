@@ -1,14 +1,23 @@
-use rand;
-use rand::Rng;
-use std::collections::VecDeque;
-use tcod::colors;
-use std::collections::HashMap;
+use std::collections::{VecDeque, HashMap};
 use std::hash::Hash;
+
 use grid::NodeMap;
 
-pub struct Mapplus {
-    pub mat: NodeMap<char>,
-    pub col : NodeMap<colors::Color>
+use rand;
+use rand::{Rng};
+
+use tcod::colors;
+
+use pathfinding::bfs;
+use pathfinding::Grid;
+
+pub struct MapInfo {
+    pub walls: NodeMap<char>,
+    pub colors: NodeMap<colors::Color>,
+    pub blocked: NodeMap<bool>,
+    pub visible: NodeMap<bool>,
+    pub start: (usize, usize),
+    pub end: (usize, usize)
 }
 
 fn flood_fill(start :(i32, i32), m: &NodeMap<i32>, color: i32) -> NodeMap<i32>{
@@ -151,25 +160,89 @@ fn count_alive_neighbours(nm: &NodeMap<i32>, p: &(i32, i32)) -> i32 {
     alive
 }
 
+fn search_closest_value<C: Eq + Hash + Clone>(haystack: &NodeMap<C>, start: &(usize, usize)
+                                              , needles: &[C] ) -> Option<Vec<(usize, usize)>>{
+    let mut gridmap = Grid::new(haystack.width, haystack.height);
+    gridmap.fill();
+
+    bfs(start, |x| gridmap.neighbours(x),
+        |x| needles.contains(&haystack.get(x)))
+}
+
+fn connect_rooms(nm: &NodeMap<i32>, number_rooms: usize) -> NodeMap<i32>{
+    let mut rooms : Vec<i32> = (2..)
+        .take(number_rooms)
+        .collect();
+
+    let mut nm_connected = nm.clone();
+
+    'outer: while rooms.len() > 1 {
+        let points = randomize_points(nm.width, nm.height);
+        for point in points {
+
+            let room = nm_connected.get(&point);
+            if room != 1 && rooms.contains(&room) {
+                let goal = rooms.clone()
+                    .into_iter()
+                    .filter(|x| *x != room)
+                    .collect::<Vec<i32>>();
+
+                let mut closest = search_closest_value(&nm_connected, &point, &goal);
+
+                let target = closest.unwrap().pop().unwrap();
+                let old_room = nm_connected.get(&target);
+
+                let mut edge = search_closest_value(&nm_connected,
+                &target, &[room]);
+
+                for p in edge.unwrap() {
+                    nm_connected.set(&p, room);
+                }
+
+                change_nodes(&mut nm_connected, old_room, room);
+
+                let index = rooms.iter().position(|&r| r == old_room)
+                    .unwrap();
+
+                rooms.remove(index);
+                continue 'outer;
+            }
+        }
+    }
+    nm_connected
+}
+
+fn change_nodes(nm: &mut NodeMap<i32>, from: i32, to: i32){
+    for x in 0..nm.width {
+        for y in 0..nm.height {
+            if nm.get(&(x,y)) == from {
+                nm.set(&(x,y), to);
+            }
+        }
+    }
+}
+
 pub fn generate_cave(width: usize,
                  height: usize,
                  generations: usize,
-                 fill_percentage: usize ) -> Mapplus {
+                 fill_percentage: usize ) -> MapInfo {
     let mut nm= new_binary_nodemap(width, height, fill_percentage);
 
     fill_edges_with(&mut nm, 1);
+
+//    let start: (usize, usize);
+//    let end: (usize, usize);
 
     for _ in 0..generations {
         nm = automaton(&nm)
     }
 
+    let (start, end) = find_start_and_exit(&nm);
+
     let _rooms: usize;
     let res = fill_map(&nm);
     nm = res.0;
     _rooms = res.1;
-
-    let room_sizes = room_sizes(&nm, &[0,1]);
-    println!("{:?}", room_sizes);
 
     let mut mat : NodeMap<char> = NodeMap::new(width, height, '.');
     let mut colormat: NodeMap<colors::Color> = NodeMap::new(width, height, colors::WHITE);
@@ -179,21 +252,64 @@ pub fn generate_cave(width: usize,
 
     for y in 0..height {
         for x in 0..width {
-            let c = match nm.get(&(x,y)) {
-                1 => '#',
-                _ => '.'
-            };
             let color = match nm.get(&(x,y)) {
                 1 => colors::WHITE,
                 z => colvec[((z+5) % 8) as usize]
             };
-            mat.set(&(x,y), c);
             colormat.set(&(x,y), color)
         }
     }
 
-    let mp: Mapplus = Mapplus {mat, col: colormat};
+    nm = connect_rooms(&nm, _rooms);
+
+    for y in 0..height {
+        for x in 0..width {
+            let c = match nm.get(&(x,y)) {
+                1 => '#',
+                _ => '.'
+            };
+            mat.set(&(x,y), c);
+        }
+    }
+
+    let mp: MapInfo = MapInfo {
+        walls: mat,
+        colors: colormat,
+        blocked: NodeMap::new(width, height, false),
+        visible: NodeMap::new(width, height, true),
+        start,
+        end
+    };
     mp
+}
+
+fn randomize_points(x: usize, y: usize) -> Vec<(usize, usize)> {
+    let mut points: Vec<(usize, usize)> = vec![];
+
+    for _x in 0..x {
+        for _y in 0..y {
+            points.push((_x, _y));
+        }
+    }
+
+    let mut rng = rand::thread_rng();
+    let slice = points.as_mut_slice();
+    rng.shuffle(slice);
+
+    slice.to_vec()
+}
+
+fn find_start_and_exit(nm: &NodeMap<i32>) ->  ((usize, usize), (usize, usize)){
+    let mut start_points = randomize_points(nm.width, nm.height);
+
+    start_points = start_points.into_iter()
+        .filter(|z| nm.get(&z) != 1)
+        .collect();
+
+    let start = start_points.pop().unwrap();
+    let end = start_points.pop().unwrap();
+
+    (start, end)
 }
 
 
@@ -363,5 +479,42 @@ mod tests {
         let mut nm = new_binary_nodemap(5, 7, 0);
         fill_edges_with(&mut nm, 1);
         nm.print();
+    }
+
+    #[test]
+    fn test_search_closest(){
+        let mut nm = NodeMap::new(10,10, '0');
+        fill_edges_with(&mut nm, '1');
+
+        nm.set(&(1,1), '2');
+        nm.set(&(5,9), '3');
+
+        let res = search_closest_value(&nm, &(1,1), &['3']).unwrap();
+        println!("{:?}", res);
+
+    }
+
+    #[test]
+    fn test_connect_rooms(){
+        let mut nm = NodeMap::new(10,10, 1);
+        let room1 = &[(1,1), (1,2), (2,2), (2,1)];
+        let room2 = &[(8,8), (9,9), (8,9), (9,8)];
+        let room3 = &[(3,5), (3,6), (4,5), (4,6)];
+
+        for point in room1 {
+            nm.set(&point, 2);
+        }
+
+        for point in room2 {
+            nm.set(&point, 3);
+        }
+
+        for point in room3 {
+            nm.set(&point, 4);
+        }
+
+        let connected = connect_rooms(&nm, 3);
+//        println!("{:?}", c)
+        connected.print();
     }
 }

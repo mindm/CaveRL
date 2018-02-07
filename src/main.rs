@@ -2,8 +2,6 @@ extern crate tcod;
 extern crate rand;
 extern crate pathfinding;
 
-
-
 mod mapgen;
 mod grid;
 
@@ -15,10 +13,10 @@ use mapgen::*;
 const SCREEN_WIDTH: i32 = 80;
 const SCREEN_HEIGHT: i32 = 50;
 
-const LIMIT_FPS: i32 = 20;  // 20 frames-per-second maximum
+const LIMIT_FPS: i32 = 20;
 
 
-fn handle_keys(root: &mut Root, player_x: &mut i32, player_y: &mut i32, mapp: &mut Mapplus) -> bool {
+fn handle_keys(root: &mut Root, player_x: &mut i32, player_y: &mut i32, mapp: &mut MapInfo) -> bool {
     use tcod::input::Key;
     use tcod::input::KeyCode::*;
 
@@ -45,18 +43,18 @@ fn handle_keys(root: &mut Root, player_x: &mut i32, player_y: &mut i32, mapp: &m
     false
 }
 
-fn draw(root: &mut Root, mapp: &Mapplus){
+fn draw(root: &mut Root, mapp: &MapInfo){
     for x in 0..SCREEN_WIDTH {
         for y in 0..SCREEN_HEIGHT {
-            let c = mapp.mat.get(&(x as usize, y as usize));
-            let color = mapp.col.get(&(x as usize, y as usize));
+            let c = mapp.walls.get(&(x as usize, y as usize));
+            let color = mapp.colors.get(&(x as usize, y as usize));
             root.put_char(x,y,c,BackgroundFlag::None);
             root.set_char_foreground(x, y, color);
         }
     }
 }
 
-fn new_map() -> Mapplus{
+fn new_map() -> MapInfo {
     mapgen::generate_cave(SCREEN_WIDTH as usize,
                           SCREEN_HEIGHT as usize,
                           3,
