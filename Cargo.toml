@@ -1,0 +1,9 @@
+[package]
+name = "rogue-rs"
+version = "0.1.0"
+authors = ["MindM <maindi66@gmail.com>"]
+
+[dependencies]
+tcod = "0.12"
+rand = "0.4"
+pathfinding = "0.6"
