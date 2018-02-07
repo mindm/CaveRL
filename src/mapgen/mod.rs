@@ -188,7 +188,7 @@ fn connect_rooms(nm: &NodeMap<i32>, number_rooms: usize) -> NodeMap<i32> {
     let mut nm_connected = nm.clone();
 
     'outer: while rooms.len() > 1 {
-        let points = randomize_points(nm.width, nm.height);
+        let points = randomize_points_usize(nm.width, nm.height);
         for point in points {
             let room = nm_connected.get(&point);
             if room != 1 && rooms.contains(&room) {
@@ -240,9 +240,6 @@ pub fn generate_cave(
     let mut nm = new_binary_nodemap(width, height, fill_percentage);
 
     fill_edges_with(&mut nm, 1);
-
-    //    let start: (usize, usize);
-    //    let end: (usize, usize);
 
     for _ in 0..generations {
         nm = automaton(&nm)
@@ -302,7 +299,7 @@ pub fn generate_cave(
     mp
 }
 
-fn randomize_points(x: usize, y: usize) -> Vec<(usize, usize)> {
+fn randomize_points_usize(x: usize, y: usize) -> Vec<(usize, usize)> {
     let mut points: Vec<(usize, usize)> = vec![];
 
     for _x in 0..x {
@@ -318,8 +315,24 @@ fn randomize_points(x: usize, y: usize) -> Vec<(usize, usize)> {
     slice.to_vec()
 }
 
+fn randomize_points_i32(x: usize, y: usize) -> Vec<(i32, i32)> {
+    let mut points: Vec<(i32, i32)> = vec![];
+
+    for _x in 0..x {
+        for _y in 0..y {
+            points.push((_x as i32, _y as i32));
+        }
+    }
+
+    let mut rng = rand::thread_rng();
+    let slice = points.as_mut_slice();
+    rng.shuffle(slice);
+
+    slice.to_vec()
+}
+
 fn find_start_and_exit(nm: &NodeMap<i32>) -> ((usize, usize), (usize, usize)) {
-    let mut start_points = randomize_points(nm.width, nm.height);
+    let mut start_points = randomize_points_usize(nm.width, nm.height);
 
     start_points = start_points
         .into_iter()
@@ -339,12 +352,6 @@ mod tests {
     use std::time::Instant;
     use pathfinding::astar;
 
-    //    #[test]
-    //    fn test_cavegen(){
-    //        let mat = generate_cave(70,42,3,40 );
-    //    }
-    //
-
     #[test]
     fn test_count_alive() {
         let m = NodeMap::from_vec(3, 3, vec![1, 0, 1, 1, 0, 1, 1, 0, 1]);
@@ -352,22 +359,6 @@ mod tests {
         assert_eq!(count_alive_neighbours(&m, &(1, 1)), 6);
     }
 
-    //    #[test]
-    //    fn test_flood_fill() {
-    //        let mut m = vec![vec![0;100]; 100];
-    //
-    ////        assert_eq!(count_alive_neighbours(&m, 0, 0), 6);
-    //
-    //        fill_edges(&mut m);
-    //
-    //        let instant = Instant::now();
-    //        let m2 = flood_fill((5,5), &m, 11);
-    //        let elapsed = instant.elapsed();
-    //
-    //        print_m_as_map(&m2);
-    //        println!("{:?}", elapsed);
-    //    }
-    //
     #[test]
     fn test_fill_dungeon() {
         let mut m2 = new_binary_nodemap(60, 35, 40);
@@ -492,9 +483,8 @@ mod tests {
                 println!();
             }
         }
-
-        //        assert_eq!(result.expect("no path found").1,16);
     }
+
     #[test]
     fn test_binary_nodemap() {
         let nm = new_binary_nodemap(20, 20, 40);
@@ -540,7 +530,7 @@ mod tests {
         }
 
         let connected = connect_rooms(&nm, 3);
-        //        println!("{:?}", c)
+
         connected.print();
     }
 }

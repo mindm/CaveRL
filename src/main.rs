@@ -17,9 +17,7 @@ const LIMIT_FPS: i32 = 20;
 
 fn handle_keys(
     root: &mut Root,
-    player_x: &mut i32,
-    player_y: &mut i32,
-    mapp: &mut MapInfo,
+    map_info: &mut MapInfo,
 ) -> bool {
     use tcod::input::Key;
     use tcod::input::KeyCode::*;
@@ -37,13 +35,7 @@ fn handle_keys(
         }
         Key { code: Escape, .. } => return true, // exit game
 
-        // movement keys
-        Key { code: Up, .. } => *player_y -= 1,
-        Key { code: Down, .. } => *player_y += 1,
-        Key { code: Left, .. } => *player_x -= 1,
-        Key { code: Right, .. } => *player_x += 1,
-
-        Key { code: Spacebar, .. } => *mapp = new_map(),
+        Key { code: Spacebar, .. } => *map_info = new_map(),
 
         _ => {}
     }
@@ -60,6 +52,8 @@ fn draw(root: &mut Root, mapp: &MapInfo) {
             root.set_char_foreground(x, y, color);
         }
     }
+    root.put_char(mapp.start.0 as i32, mapp.start.1 as i32, '<', BackgroundFlag::None);
+    root.put_char(mapp.end.0 as i32, mapp.start.1 as i32, '>', BackgroundFlag::None);
 }
 
 fn new_map() -> MapInfo {
@@ -76,22 +70,16 @@ fn main() {
 
     tcod::system::set_fps(LIMIT_FPS);
 
-    let mut player_x = SCREEN_WIDTH / 2;
-    let mut player_y = SCREEN_HEIGHT / 2;
-
-    let mut mapp = mapgen::generate_cave(SCREEN_WIDTH as usize, SCREEN_HEIGHT as usize, 3, 40);
+    let mut map_info = mapgen::generate_cave(SCREEN_WIDTH as usize, SCREEN_HEIGHT as usize, 3, 40);
 
     while !root.window_closed() {
         root.set_default_foreground(colors::WHITE);
-        //        root.put_char(player_x, player_y, '@', BackgroundFlag::None);
 
-        draw(&mut root, &mapp);
+        draw(&mut root, &map_info);
         root.flush();
 
-        //        root.put_char(player_x, player_y, ' ', BackgroundFlag::None);
-
         // handle keys and exit game if needed
-        let exit = handle_keys(&mut root, &mut player_x, &mut player_y, &mut mapp);
+        let exit = handle_keys(&mut root, &mut map_info);
         if exit {
             break;
         }
