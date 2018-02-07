@@ -4,7 +4,7 @@ use std::fmt::Debug;
 pub struct NodeMap<C> {
     pub width: usize,
     pub height: usize,
-    grid: Vec<C>
+    grid: Vec<C>,
 }
 
 impl<C> NodeMap<C> {
@@ -14,7 +14,7 @@ impl<C> NodeMap<C> {
             values.len(),
             "length of vector does not correspond to announced dimensions"
         );
-        NodeMap{
+        NodeMap {
             width,
             height,
             grid: values,
@@ -23,7 +23,7 @@ impl<C> NodeMap<C> {
 }
 
 impl<C: Clone> NodeMap<C> {
-    pub fn new(width: usize, height: usize, init: C) -> NodeMap<C>{
+    pub fn new(width: usize, height: usize, init: C) -> NodeMap<C> {
         let mut v = Vec::with_capacity(width * height);
         v.resize(width * height, init);
         NodeMap {
@@ -33,11 +33,11 @@ impl<C: Clone> NodeMap<C> {
         }
     }
 
-    pub fn get(&self, p: &( usize, usize))-> C {
+    pub fn get(&self, p: &(usize, usize)) -> C {
         self.grid[p.1 * self.width + p.0].clone()
     }
 
-    pub fn set(&mut self, p: &( usize, usize), value: C) {
+    pub fn set(&mut self, p: &(usize, usize), value: C) {
         self.grid[p.1 * self.width + p.0] = value;
     }
 }
@@ -47,14 +47,12 @@ impl<C: Debug + Clone> NodeMap<C> {
     pub fn print(&self) {
         for j in 0..self.height {
             for i in 0..self.width {
-                print!("{:?}", self.get(&(i,j)))
+                print!("{:?}", self.get(&(i, j)))
             }
             println!();
         }
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -76,9 +74,9 @@ mod tests {
     }
 
     #[test]
-    fn test_from_vec(){
-        let new = NodeMap::from_vec(3,3, vec![0,0,1,0,0,0,0,0,0]);
+    fn test_from_vec() {
+        let new = NodeMap::from_vec(3, 3, vec![0, 0, 1, 0, 0, 0, 0, 0, 0]);
         new.print();
-        assert_eq!(new.get(&(2,0)), 1);
+        assert_eq!(new.get(&(2, 0)), 1);
     }
 }
