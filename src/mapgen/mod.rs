@@ -20,12 +20,10 @@ pub struct MapInfo {
     pub end: (usize, usize),
 }
 
-fn flood_fill(start: (i32, i32), m: &NodeMap<i32>, color: i32) -> NodeMap<i32> {
+fn flood_fill(start: (i32, i32), m2: &mut NodeMap<i32>, color: i32) {
     let (x, y) = start;
 
-    assert_eq!(m.get(&(x as usize, y as usize)), 0);
-
-    let mut m2 = m.clone();
+    assert_eq!(m2.get(&(x as usize, y as usize)), 0);
 
     let mut queue = VecDeque::new();
     queue.push_back((x, y));
@@ -50,26 +48,24 @@ fn flood_fill(start: (i32, i32), m: &NodeMap<i32>, color: i32) -> NodeMap<i32> {
             queue.push_back((x1 + 1, y1))
         }
     }
-    m2
 }
 
-fn fill_map(nm: &NodeMap<i32>) -> (NodeMap<i32>, usize) {
+fn fill_map(mut nm: &mut NodeMap<i32>) -> usize {
     let height = nm.height;
     let width = nm.width;
-    let mut m2 = nm.clone();
 
     let mut colors = 2..999;
     let mut count = 0;
 
     for x in 0..width {
         for y in 0..height {
-            if m2.get(&(x, y)) == 0 {
-                m2 = flood_fill((x as i32, y as i32), &m2, colors.next().unwrap());
+            if nm.get(&(x, y)) == 0 {
+                flood_fill((x as i32, y as i32), &mut nm, colors.next().unwrap());
                 count += 1;
             }
         }
     }
-    (m2, count)
+    count
 }
 
 fn room_sizes<T: Ord + Hash + Eq + Clone>(m: &NodeMap<T>, exclude: &[T]) -> Vec<(T, usize)> {
@@ -120,17 +116,15 @@ fn fill_edges_with<C: Clone>(nm: &mut NodeMap<C>, c: C) {
     }
 }
 
-fn automaton(original: &NodeMap<i32>) -> NodeMap<i32> {
-    let mut nm: NodeMap<i32> = original.clone();
-
+fn automaton(nm: &mut NodeMap<i32>) {
     let death_limit = 3;
     let birth_limit = 4;
 
     for y in 0..nm.height {
         for x in 0..nm.width {
-            let alive = count_alive_neighbours(original, &(x as i32, y as i32));
+            let alive = count_alive_neighbours(nm, &(x as i32, y as i32));
 
-            if original.get(&(x, y)) == 1 {
+            if nm.get(&(x, y)) == 1 {
                 if alive < death_limit {
                     nm.set(&(x, y), 0);
                 } else {
@@ -143,8 +137,6 @@ fn automaton(original: &NodeMap<i32>) -> NodeMap<i32> {
             }
         }
     }
-
-    nm
 }
 
 fn count_alive_neighbours(nm: &NodeMap<i32>, p: &(i32, i32)) -> i32 {
@@ -242,15 +234,12 @@ pub fn generate_cave(
     fill_edges_with(&mut nm, 1);
 
     for _ in 0..generations {
-        nm = automaton(&nm)
+        automaton(&mut nm)
     }
 
     let (start, end) = find_start_and_exit(&nm);
 
-    let _rooms: usize;
-    let res = fill_map(&nm);
-    nm = res.0;
-    _rooms = res.1;
+    let _rooms = fill_map(&mut nm);
 
     let mut mat: NodeMap<char> = NodeMap::new(width, height, '.');
     let mut colormat: NodeMap<colors::Color> = NodeMap::new(width, height, colors::WHITE);
@@ -365,19 +354,16 @@ mod tests {
         fill_edges_with(&mut m2, 1);
 
         m2.print();
-        let mut m3 = automaton(&m2);
-        m3 = automaton(&m3);
-        m3 = automaton(&m3);
+        automaton(&mut m2);
+        automaton(&mut m2);
+        automaton(&mut m2);
 
-        m3.print();
+        m2.print();
 
-        let rooms: usize;
-        let res = fill_map(&m3);
-        m3 = res.0;
-        rooms = res.1;
+        let rooms = fill_map(&mut m2);
 
         println!();
-        m3.print();
+        m2.print();
     }
 
     #[derive(Clone, Debug)]
