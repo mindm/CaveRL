@@ -10,19 +10,31 @@ $ cargo build
 $ cargo run
 ```
 
+### Implemented features
+
+- [x] Player object
+- [x] Player movement
+- [x] FOV
+- [x] Memory of visited locations
+- [x] Monsters (They're empty husks right now)
+- [x] ECS
+- [x] Melee combat (Just damage/HP as of now)
+- [x] Mapgen
+- [x] Saving/Loading
+
 ### Next features
 
-- [ ] Player object
-- [ ] Player movement
-- [ ] FOV
-- [ ] Monsters
-- [ ] ECS
+- [ ] Map-object instead of everything is entity (performance)
 - [ ] Attributes/Stats
-- [ ] Melee combat
+- [ ] Character progression
+- [ ] Inventory
 - [ ] Monster AI
 - [ ] Items
+- [ ] Equipment slots
 - [ ] Sub-menu
 - [ ] Main menu
+- [ ] Debug mode
+- [ ] More GUI
 
 ### In the distant future
 
