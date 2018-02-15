@@ -32,6 +32,7 @@ mod grid;
 mod mapgen;
 
 use grid::NodeMap;
+use mapgen::MapInfo;
 
 const MAP_HEIGHT: i32 = 50;
 const MAP_WIDTH: i32 = 80;
@@ -109,6 +110,10 @@ struct SightRange{
     range: i32
 }
 
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, new)]
+struct MapObject {
+    map: MapInfo
+} 
 /// Renders all entities which have Position and Sprite components.
 /// The rendering is done in 3 phases:
 /// 1. Render static entities
