@@ -109,6 +109,11 @@ struct SightRange{
     range: i32
 }
 
+/// Renders all entities which have Position and Sprite components.
+/// The rendering is done in 3 phases:
+/// 1. Render static entities
+/// 2. Render non-player entities
+/// 3. Render player
 fn render(world: &recs::Ecs, con: &mut RootConsole){
     let player = get_player(&world);
     let fov = world.get::<Fov>(player).unwrap().fov;
@@ -168,6 +173,8 @@ fn is_in_fov(nm: &NodeMap<bool>, x: i32, y: i32) -> bool {
     nm.get(&(x as usize, y as usize))
 }
 
+/// If the entity has taken damage, calculate how much to take and reduce current hp.
+/// Kills entity if hp drops below zero.
 fn take_dmg(world: &mut Ecs) {
     let components = component_filter!(Health, TakeDamage);
     let mut to_update = Vec::new();
@@ -197,6 +204,7 @@ fn take_dmg(world: &mut Ecs) {
     }
 }
 
+/// Kill entity and do the needful
 fn die(world: &mut Ecs, id: &EntityId){
     let pos : Position = world.get(*id).unwrap();
     let mut name : Name = world.get(*id).unwrap();
@@ -208,11 +216,15 @@ fn die(world: &mut Ecs, id: &EntityId){
     let _ = world.set(corpse, Sprite{ glyph: '%'});
 }
 
+/// Calculates the FOV for every entity who has the FOV and SightRange components
+/// Also calulates the SpatialMemory if entity has it.
 fn calculate_fov(world: &mut Ecs){
+    // This are the Entities which FOV is calculated for
     let components = component_filter!(Position, Fov, SightRange);
     let mut to_update = Vec::new();
     world.collect_with(&components, &mut to_update);
 
+    // These are the Entities which block sight
     let components2 = component_filter!(BlockSight, Position);
     let mut blocking = Vec::new();
     world.collect_with(&components2, &mut blocking);
@@ -233,6 +245,7 @@ fn calculate_fov(world: &mut Ecs){
             let fov = world.borrow_mut::<Fov>(*id).unwrap();
             fov.fov = map_to_vec(&fov_map);
         }
+        // Also update memory if entity has one (mainly the player)
         if world.has::<SpatialMemory>(*id).unwrap() {
             let fov = world.get::<Fov>(*id).unwrap();
             let mut memory = world.borrow_mut::<SpatialMemory>(*id).unwrap();
@@ -255,6 +268,7 @@ fn map_to_vec(map: &Map) -> NodeMap<bool>{
     NodeMap::from_vec(MAP_WIDTH as usize, MAP_HEIGHT as usize, vec)
 }
 
+/// Updates memory
 fn compute_memory(memory: &mut NodeMap<bool>, fov: &NodeMap<bool>){
     for x in 0..MAP_WIDTH as usize{
         for y in 0..MAP_HEIGHT as usize{
