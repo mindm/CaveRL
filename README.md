@@ -19,7 +19,7 @@ $ cargo run
 - [x] Monsters (They're empty husks right now)
 - [x] ECS
 - [x] Melee combat (Just damage/HP as of now)
-- [x] Mapgen
+- [x] Map generation
 - [x] Saving/Loading
 
 ### Next features
