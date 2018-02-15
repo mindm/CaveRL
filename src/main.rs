@@ -1,5 +1,7 @@
 extern crate tcod;
 extern crate serde;
+extern crate rand;
+extern crate pathfinding;
 
 //use time::PreciseTime;
 
@@ -28,6 +30,8 @@ use tcod::colors::{DARK_GREY, BLACK};
 
 mod grid;
 mod mapgen;
+
+use grid::NodeMap;
 
 const MAP_HEIGHT: i32 = 50;
 const MAP_WIDTH: i32 = 80;
@@ -89,12 +93,12 @@ struct Static {}
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, new)]
 struct Fov{
-    fov: Vec<bool>
+    fov: NodeMap<bool>
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, new)]
 struct SpatialMemory {
-    memory: Vec<bool>
+    memory: NodeMap<bool>
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -155,11 +159,13 @@ fn render(world: &recs::Ecs, con: &mut RootConsole){
 
 }
 
-fn is_in_fov(vec: &Vec<bool>, x: i32, y: i32) -> bool {
+/// Calculate if point is visible in fov, works also with memory or any other NodeMap<bool> that
+/// has the map dimensions
+fn is_in_fov(nm: &NodeMap<bool>, x: i32, y: i32) -> bool {
     if x < 0 || y < 0 || x >= MAP_WIDTH || y >= MAP_HEIGHT {
         return false;
     }
-    vec[(MAP_WIDTH * y + x) as usize]
+    nm.get(&(x as usize, y as usize))
 }
 
 fn take_dmg(world: &mut Ecs) {
@@ -235,7 +241,9 @@ fn calculate_fov(world: &mut Ecs){
     }
 }
 
-fn map_to_vec(map: &Map) -> Vec<bool>{
+/// Converts tcod's Map into NodeMap.
+/// Tcod Map is used because it handles FOV computing.
+fn map_to_vec(map: &Map) -> NodeMap<bool>{
     let mut vec :Vec<bool> = Vec::with_capacity((MAP_WIDTH * MAP_HEIGHT) as usize);
 
     for y in 0..MAP_HEIGHT {
@@ -243,13 +251,16 @@ fn map_to_vec(map: &Map) -> Vec<bool>{
             vec.push(map.is_in_fov(x, y));
         }
     }
-    vec
+
+    NodeMap::from_vec(MAP_WIDTH as usize, MAP_HEIGHT as usize, vec)
 }
 
-fn compute_memory(memory: &mut Vec<bool>, fov: &Vec<bool>){
-    for y in 0..MAP_HEIGHT {
-        for x in 0..MAP_WIDTH{
-            memory[(y * MAP_WIDTH + x) as usize] =  memory[(y * MAP_WIDTH + x) as usize] || fov[(y * MAP_WIDTH + x) as usize];
+fn compute_memory(memory: &mut NodeMap<bool>, fov: &NodeMap<bool>){
+    for x in 0..MAP_WIDTH as usize{
+        for y in 0..MAP_HEIGHT as usize{
+            if fov.get(&(x, y)) == true {
+                memory.set(&(x, y), true);
+            }
         }
     }
 }
@@ -490,8 +501,8 @@ fn main() {
     let _ = world.set(player, Damage::new(1));
     let _ = world.set(player, Velocity::new(0,0));
     let _ = world.set(player, Sprite::new('@'));
-    let _ = world.set(player, Fov::new(vec![false; (MAP_HEIGHT * MAP_WIDTH) as usize]));
-    let _ = world.set(player, SpatialMemory::new(vec![false; (MAP_HEIGHT * MAP_WIDTH) as usize]));
+    let _ = world.set(player, Fov::new(NodeMap::new(MAP_WIDTH as usize, MAP_HEIGHT as usize, false)));
+    let _ = world.set(player, SpatialMemory::new(NodeMap::new (MAP_WIDTH as usize, MAP_HEIGHT as usize, false)));
     let _ = world.set(player, SightRange::new(5));
 
     let _ = world.set(monster, Velocity::new(0,0));
@@ -505,7 +516,7 @@ fn main() {
     for point in walls {
         let rock = world.create_entity();
         let (x, y) = point;
-        let _ = world.set(rock, Position { x: x, y: y });
+        let _ = world.set(rock, Position { x, y });
         let _ = world.set(rock, Blocking {});
         let _ = world.set(rock, Name::new("rock".to_string()));
         let _ = world.set(rock, Sprite { glyph: '#' });

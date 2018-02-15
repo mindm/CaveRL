@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-#[derive(Clone, Eq, Hash, PartialEq, Debug)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug, Serialize, Deserialize)]
 pub struct NodeMap<C> {
     pub width: usize,
     pub height: usize,
