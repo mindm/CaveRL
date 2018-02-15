@@ -26,6 +26,9 @@ use tcod::input::KeyCode::{Up, Down, Left, Right, Escape};
 use tcod::input::KeyCode::{F9, F5};
 use tcod::colors::{DARK_GREY, BLACK};
 
+mod grid;
+mod mapgen;
+
 const MAP_HEIGHT: i32 = 50;
 const MAP_WIDTH: i32 = 80;
 const FOV_ALGO: FovAlgorithm = FovAlgorithm::Basic;
