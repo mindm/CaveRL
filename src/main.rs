@@ -113,13 +113,22 @@ struct SightRange{
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, new)]
 struct MapObject {
     map: MapInfo
-} 
+}
+
 /// Renders all entities which have Position and Sprite components.
 /// The rendering is done in 3 phases:
 /// 1. Render static entities
 /// 2. Render non-player entities
 /// 3. Render player
 fn render(world: &recs::Ecs, con: &mut RootConsole){
+    let map_id = get_map(&world);
+    let map = world.get::<MapObject>(map_id).unwrap();
+    for x in 0..MAP_WIDTH as usize{
+        for y in 0..MAP_HEIGHT as usize{
+            con.put_char(x as i32, y as i32, map.map.walls.get(&(x, y)), BackgroundFlag::Set);
+        }
+    }
+
     let player = get_player(&world);
     let fov = world.get::<Fov>(player).unwrap().fov;
     let memory = world.get::<SpatialMemory>(player).unwrap().memory;
@@ -351,6 +360,13 @@ fn get_player(world: &Ecs) -> EntityId{
     to_update[0]
 }
 
+fn get_map(world: &Ecs) -> EntityId{
+    let components = component_filter!(MapObject);
+    let mut to_update = vec![];
+    world.collect_with(&components, &mut to_update);
+    to_update[0]
+}
+
 fn save(world: &Ecs){
 
     let mut vec:Vec<Vec<serde_json::value::Value>> = vec![];
@@ -499,21 +515,9 @@ fn main() {
         .init();
 
     let mut world = Ecs::new();
-    let walls = vec![(1, 3), (2, 3), (3, 3), (4, 3), (5, 3)];
-
-    for x in 0..MAP_WIDTH {
-        for y in 0..MAP_HEIGHT{
-            if !walls.contains(&(x, y)) {
-                let floor = world.create_entity();
-                let _ = world.set(floor, Position::new(x, y));
-                let _ = world.set(floor, Static {});
-                let _ = world.set(floor, Sprite { glyph: '.' });
-            }
-        }
-    }
 
     let mut player = world.create_entity();
-    let monster = world.create_entity();
+    let mut map = world.create_entity();
 
     let _ = world.set(player, Position::new(1, 1));
     let _ = world.set(player, Player{});
@@ -524,24 +528,14 @@ fn main() {
     let _ = world.set(player, SpatialMemory::new(NodeMap::new (MAP_WIDTH as usize, MAP_HEIGHT as usize, false)));
     let _ = world.set(player, SightRange::new(5));
 
-    let _ = world.set(monster, Velocity::new(0,0));
-    let _ = world.set(monster, Position::new(10, 10));
-    let _ = world.set(monster, Sprite::new('m'));
-    let _ = world.set(monster, Health::new(2, 5));
-    let _ = world.set(monster, TakeDamage::new());
-    let _ = world.set(monster, Name::new("Gorok".to_string()));
+    let map_info = mapgen::generate_cave(MAP_WIDTH as usize,
+                                    MAP_HEIGHT as usize,
+                                    3,
+                                    40);
+    let (sx, sy) = map_info.start;
+    let _ = world.set(player, Position::new(sx as i32, sy as i32));
 
-    // let walls = vec![(1, 3), (2, 3), (3, 3), (4, 3), (5, 3)];
-    for point in walls {
-        let rock = world.create_entity();
-        let (x, y) = point;
-        let _ = world.set(rock, Position { x, y });
-        let _ = world.set(rock, Blocking {});
-        let _ = world.set(rock, Name::new("rock".to_string()));
-        let _ = world.set(rock, Sprite { glyph: '#' });
-        let _ = world.set(rock, BlockSight{} );
-        let _ = world.set(rock, Static {});
-    }
+    let _ = world.set(map, MapObject::new(map_info));
 
     calculate_fov(&mut world);
 

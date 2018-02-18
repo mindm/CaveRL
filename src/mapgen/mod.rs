@@ -11,6 +11,8 @@ use tcod::colors;
 use pathfinding::bfs;
 use pathfinding::Grid;
 
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MapInfo {
     pub walls: NodeMap<char>,
     pub colors: NodeMap<colors::Color>,
