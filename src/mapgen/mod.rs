@@ -70,6 +70,7 @@ fn fill_map(mut nm: &mut NodeMap<i32>) -> usize {
     count
 }
 
+#[allow(dead_code)]
 fn room_sizes<T: Ord + Hash + Eq + Clone>(m: &NodeMap<T>, exclude: &[T]) -> Vec<(T, usize)> {
     let mut size = HashMap::new();
 
