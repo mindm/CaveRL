@@ -115,6 +115,31 @@ struct MapObject {
     map: MapInfo
 }
 
+/// Creates a vector that holds serialized data for all entities in Ecs for defined components.
+/// # Examples
+///
+/// ```
+/// let serialized = serialize_world!(world; Health, Position, Sprite, Name)
+/// ```
+macro_rules! serialize_world {
+    ($world: ident; $($str: ty),+) => {
+        {
+            let mut outer_vec = Vec::new();
+            for id in $world.iter() {
+                let mut vec = Vec::new();
+                $(
+                    match $world.get::<$str>(id) {
+                        Ok(component) => vec.push(json!({stringify!($str) : component})),
+                        _ => ()
+                    }
+                )+
+                outer_vec.push(vec);
+            }
+            outer_vec
+        }
+    }
+}
+
 /// Renders all entities which have Position and Sprite components.
 /// The rendering is done in 3 phases:
 /// 1. Render static entities
@@ -369,70 +394,8 @@ fn get_map(world: &Ecs) -> EntityId{
 
 fn save(world: &Ecs){
 
-    let mut vec:Vec<Vec<serde_json::value::Value>> = vec![];
+    let mut vec:Vec<Vec<serde_json::value::Value>> = serialize_world!(world; Position, Velocity, Sprite, Name, TakeDamage, Health, Blocking, Damage, Player, Static, Fov, SpatialMemory, BlockSight, SightRange, MapObject);
 
-    for id in world.iter(){
-        let mut vec_inner : Vec<serde_json::Value> = vec![];
-
-        match world.get::<Position>(id) {
-            Ok(component) => vec_inner.push(json!({"Position": component})),
-            _ => ()
-        }
-        match world.get::<Velocity>(id) {
-            Ok(component) => vec_inner.push(json!({"Velocity": component})),
-            _ => ()
-        }
-        match world.get::<Name>(id) {
-            Ok(component) => vec_inner.push(json!({"Name": component})),
-            _ => ()
-        }
-        match world.get::<TakeDamage>(id) {
-            Ok(component) => vec_inner.push(json!({"TakeDamage": component})),
-            _ => ()
-        }
-        match world.get::<Health>(id) {
-            Ok(component) => vec_inner.push(json!({"Health": component})),
-            _ => ()
-        }
-        match world.get::<Blocking>(id) {
-            Ok(component) => vec_inner.push(json!({"Blocking": component})),
-            _ => ()
-        }
-        match world.get::<Sprite>(id) {
-            Ok(component) => vec_inner.push(json!({"Sprite": component})),
-            _ => ()
-        }
-        match world.get::<Damage>(id) {
-            Ok(component) => vec_inner.push(json!({"Damage": component})),
-            _ => ()
-        }
-        match world.get::<Player>(id) {
-            Ok(component) => vec_inner.push(json!({"Player": component})),
-            _ => ()
-        }
-        match world.get::<Static>(id) {
-            Ok(component) => vec_inner.push(json!({"Static": component})),
-            _ => ()
-        }
-        match world.get::<Fov>(id) {
-            Ok(component) => vec_inner.push(json!({"Fov": component})),
-            _ => ()
-        }
-        match world.get::<SpatialMemory>(id) {
-            Ok(component) => vec_inner.push(json!({"SpatialMemory": component})),
-            _ => ()
-        }
-        match world.get::<BlockSight>(id) {
-            Ok(component) => vec_inner.push(json!({"BlockSight": component})),
-            _ => ()
-        }
-        match world.get::<SightRange>(id) {
-            Ok(component) => vec_inner.push(json!({"SightRange": component})),
-            _ => ()
-        }
-
-        vec.push(vec_inner);
-    }
     let buffer = File::create("foo.txt").unwrap();
     println!("Game saved!");
     let _ = serde_json::to_writer(buffer, &json!(vec));;
@@ -497,6 +460,9 @@ fn load(world: &mut Ecs){
                 },
                 "SightRange" => {
                     let _ = world.set::<SightRange>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
+                },
+                "MapObject" => {
+                    let _ = world.set::<MapObject>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
                 }
                 _ => ()
             }

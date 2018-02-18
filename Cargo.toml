@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["MindM <maindi66@gmail.com>"]
 
 [dependencies]
-tcod = "0.12"
+#tcod = "0.12"
 rand = "0.4"
 pathfinding = "0.6"
 recs = "2.0.1"
@@ -13,3 +13,7 @@ serde = "1.0.27"
 serde_json = "1.0"
 serde_derive = "1.0.27"
 derive-new = "0.5"
+
+[dependencies.tcod]
+version = "0.12"
+features = ["serialization"]
