@@ -119,7 +119,7 @@ struct MapObject {
 /// # Examples
 ///
 /// ```
-/// let serialized = serialize_world!(world; Health, Position, Sprite, Name)
+/// let serialized:Vec<Vec<serde_json::value::Value>> = serialize_world!(world; Health, Position, Sprite, Name)
 /// ```
 macro_rules! serialize_world {
     ($world: ident; $($str: ty),+) => {
@@ -136,6 +136,37 @@ macro_rules! serialize_world {
                 outer_vec.push(vec);
             }
             outer_vec
+        }
+    }
+}
+
+/// Loads components to world from serde_json::Value.
+/// Note that world, json and components are differentiated with semicolon and components by comma.
+/// # Examples
+/// ```
+/// let buffer = File::open("savegame.json").unwrap();
+/// let json: serde_json::Value = serde_json::from_reader(buffer).unwrap();
+///
+/// load_components!(world; json; Health, Position, Sprite, Name);
+/// ```
+macro_rules! load_components {
+($world: ident; $json_value: ident; $($component: ty),+) => {
+        {
+            let v = $json_value.as_array().unwrap();
+            for i in 0..v.len() {
+                let new = $world.create_entity();
+                for val in v[i].as_array().unwrap().iter() {
+                    let key: &String = val.as_object().unwrap().keys().collect::<Vec<_>>()[0];
+                    match key.as_ref() {
+                        $(
+                            stringify!($component) => {
+                                let _ = $world.set::<$component>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
+                            },
+                        )+
+                        _ => ()
+                    }
+                }
+            }
         }
     }
 }
@@ -394,7 +425,7 @@ fn get_map(world: &Ecs) -> EntityId{
 
 fn save(world: &Ecs){
 
-    let mut vec:Vec<Vec<serde_json::value::Value>> = serialize_world!(world; Position, Velocity,
+    let vec:Vec<Vec<serde_json::value::Value>> = serialize_world!(world; Position, Velocity,
      Sprite, Name, TakeDamage, Health, Blocking, Damage, Player, Static, Fov, SpatialMemory,
      BlockSight, SightRange, MapObject);
 
@@ -404,75 +435,23 @@ fn save(world: &Ecs){
 
 }
 
-fn load(world: &mut Ecs){
-    let mut ids = vec![];
-    world.collect(&mut ids);
+    fn load(world: &mut Ecs){
+        let mut ids = vec![];
+        world.collect(&mut ids);
 
-    for id in ids.iter(){
-        let _ = world.destroy_entity(*id);
-    }
-
-    let buffer = File::open("foo.txt").unwrap();
-    let json: serde_json::Value = serde_json::from_reader(buffer).unwrap();
-    let v = json.as_array().unwrap();
-    for i in 0..v.len(){
-        let new = world.create_entity();
-        for val in v[i].as_array().unwrap().iter(){
-            let key : &String = val.as_object().unwrap().keys().collect::<Vec<_>>()[0];
-
-            match key.as_ref(){
-                "Position" => {
-                    let _ = world.set::<Position>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                },
-                "Velocity" => {
-                    let _ = world.set::<Velocity>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                }
-                "Sprite" => {
-                    let _ = world.set::<Sprite>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                }
-                "Name" => {
-                    let _ = world.set::<Name>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                },
-                "TakeDamage" => {
-                    let _ = world.set::<TakeDamage>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                },
-                "Health" => {
-                    let _ = world.set::<Health>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                },
-                "Blocking" => {
-                    let _ = world.set::<Blocking>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                },
-                "Damage" => {
-                    let _ = world.set::<Damage>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                },
-                "Player" => {
-                    let _ = world.set::<Player>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                },
-                "Static" => {
-                    let _ = world.set::<Static>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                },
-                "Fov" => {
-                    let _ = world.set::<Fov>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                },
-                "SpatialMemory" => {
-                    let _ = world.set::<SpatialMemory>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                },
-                "BlockSight" => {
-                    let _ = world.set::<BlockSight>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                },
-                "SightRange" => {
-                    let _ = world.set::<SightRange>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                },
-                "MapObject" => {
-                    let _ = world.set::<MapObject>(new, serde_json::from_value(val.as_object().unwrap()[key].clone()).unwrap());
-                }
-                _ => ()
-            }
+        for id in ids.iter(){
+            let _ = world.destroy_entity(*id);
         }
 
+        let buffer = File::open("foo.txt").unwrap();
+        let json: serde_json::Value = serde_json::from_reader(buffer).unwrap();
+
+        load_components!(world; json; Position, Velocity,
+            Sprite, Name, TakeDamage, Health, Blocking, Damage, Player, Static, Fov, SpatialMemory,
+            BlockSight, SightRange, MapObject);
+
+        println!("Game loaded!");
     }
-    println!("Game loaded!");
-}
 
 fn main() {
     let mut con = RootConsole::initializer()
